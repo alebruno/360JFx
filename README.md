@@ -10,4 +10,4 @@ With this tool you can visualize a spherical panorama in equirectangular format 
 Features:
 * Multiplatform: it runs on Windows, Mac and Linux.
 * Self-contained: no additional libraries are needed, only JDK 11 is required.
-* Accurate rendering in proximity of zenit and nadir angles
+* Accurate rendering in proximity of zenit and nadir angles.
