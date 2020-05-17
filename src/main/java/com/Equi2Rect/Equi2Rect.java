@@ -69,11 +69,7 @@ public class Equi2Rect {
 	
 	private Equi2Rect() {
 	}
-	
-	static public void init() {
-		lanczos2_init();
-		math_init();
-	}
+
 	static public void initForIntArray2D( int intArray2D[][] ) {
 		math_setLookUp(intArray2D);
 	}
@@ -90,6 +86,7 @@ public class Equi2Rect {
     	Boolean lanczos2 )
     {
     	int returnRectData[] = new int[rectWidth * rectHeight];
+
 		math_extractview(
 			equiData, //ai1,
 			returnRectData, //vdata,
@@ -104,11 +101,6 @@ public class Equi2Rect {
 		return returnRectData;
     }
 
-	private static void math_init() {
-		mt = new double[3][3];
-		mi = new long[3][3];
-	}
-	
 	private static void math_setLookUp(int ai[][]) {
 		if (ai != null) {
 			if (atan_LU_HR == null) {
@@ -165,16 +157,34 @@ public class Equi2Rect {
 		double pan,
 		double tilt,
 		boolean bilinear,
-		boolean lanczos2) {
-			
-		if(lanczos2) {
-			double prev_view_scale = view_scale;
-			lanczos2_compute_view_scale(equiWidth, rectWidth, fov);
-			if (view_scale != prev_view_scale)
-				lanczos2_compute_weights(view_scale);
+		boolean lanczos2)
+	{
+		double[][] mt = new double[3][3];
+		long[][] mi = new long[3][3];
+		int[] lanczos2_LU;
+		int[][] lanczos2_weights_LU;
+
+		// Start initialization
+		double x, dx;
+		int k;
+
+		// sets up the lookup table
+
+		lanczos2_LU = new int[UNIT_XSAMPLES * 2 + 1];
+		x = 0.0;
+		dx = 1.0 / UNIT_XSAMPLES;
+		for (k = 0; k <= UNIT_XSAMPLES * 2; k++) {
+			lanczos2_LU[k] =
+					(int) (sinc(x) * sinc(x / 2.0) * UNIT_YSAMPLES + 0.5);
+			x += dx;
 		}
 
- 		math_set_int_matrix(fov, pan, tilt, rectWidth);
+		lanczos2_weights_LU = new int[UNIT_XSAMPLES + 1][MAX_WEIGHTS];
+
+		double view_scale = lanczos2_compute_view_scale(equiWidth, rectWidth, fov);
+		int lanczos2_n_points = lanczos2_compute_weights(view_scale, lanczos2_LU, lanczos2_weights_LU);
+
+ 		math_set_int_matrix(fov, pan, tilt, rectWidth, mt, mi);
 		math_transform(
 			pd,
 			pd[0].length,
@@ -186,10 +196,13 @@ public class Equi2Rect {
 			fov,
 			tilt,
 			bilinear,
-			lanczos2);
+			lanczos2,
+			mi,
+			lanczos2_n_points,
+			lanczos2_weights_LU);
 	}
 // 
-	private static void math_set_int_matrix(double fov, double pan, double tilt, int vw) {
+	private static void math_set_int_matrix(double fov, double pan, double tilt, int vw, double[][] mt, long[][] mi) {
 		double a = (fov * 2D * 3.1415926535897931D) / 360D; // field of view in rad
 		double p = (double) vw / (2D * Math.tan(a / 2D));
 		SetMatrix(
@@ -230,7 +243,10 @@ public class Equi2Rect {
 		double fov,
 		double pitch,
 		boolean bilinear,
-		boolean lanczos2) {
+		boolean lanczos2,
+		long[][] mi,
+		int lanczos2_n_points,
+		int[][] lanczos2_weights_LU) {
 
 		// flag: use nearest neighbour interpolation
 		boolean nn = (!bilinear && !lanczos2);
@@ -479,7 +495,12 @@ public class Equi2Rect {
 				row_xcurrent[itmp] = row_xold[itmp];
 				row_ycurrent[itmp] = row_yold[itmp];
 			}
-			
+
+			// Allocate buffers
+			int[] aR = new int[MAX_WEIGHTS];
+			int[] aG = new int[MAX_WEIGHTS];
+			int[] aB = new int[MAX_WEIGHTS];
+
 			// now draws a set of lines
 			for( int ky = 0; ky < N_POINTS_INTERP_Y_P1; ky++) {
 				
@@ -616,7 +637,7 @@ public class Equi2Rect {
 									}
 									if(lanczos2)
 										//v[idx] = lanczos2_interp_pixel( pd, pw, ph - deltaYHorizonPosition, xs_org, ys_org, dx, dy);
-										v[idx] = lanczos2_interp_pixel( pd, pw, ph, xs_org, ys_org, dx, dy);
+										v[idx] = lanczos2_interp_pixel( pd, pw, ph, xs_org, ys_org, dx, dy, aR, aG, aB, lanczos2_n_points, lanczos2_weights_LU);
 									else
 										v[idx] = bilinear_interp_pixel(px00, px01, px10, px11, dx, dy);
 									//hv[idx] = (byte) (px00 >> 24); //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -759,36 +780,15 @@ public class Equi2Rect {
 		else
 			return Math.sin(PI * x) / (PI * x);
 	}	
-	
-	private static void lanczos2_init() {
-		double x, dx;
-		int k;
 
-		// sets up the lookup table
 
-		lanczos2_LU = new int[UNIT_XSAMPLES * 2 + 1];
-		x = 0.0;
-		dx = 1.0 / UNIT_XSAMPLES;
-		for (k = 0; k <= UNIT_XSAMPLES * 2; k++) {
-			lanczos2_LU[k] =
-				(int) (sinc(x) * sinc(x / 2.0) * UNIT_YSAMPLES + 0.5);
-			x += dx;
-		}
-
-		// allocates the weights lookup table
-		// the values are set up by lanczos2_compute_weights()
-		lanczos2_weights_LU = new int[UNIT_XSAMPLES + 1][MAX_WEIGHTS];
-
-		// allocates temporary buffers
-		aR = new int[MAX_WEIGHTS];
-		aG = new int[MAX_WEIGHTS];
-		aB = new int[MAX_WEIGHTS];
-	}
-// 
 // 	// computes the weiths for interpolating pixels
 // 	// the weights change with view_scale
-	private static void lanczos2_compute_weights(double pscale) {
+	private static int lanczos2_compute_weights(double pscale, int[] lanczos2_LU, int[][] lanczos2_weights_LU) {
 		double s, corr;
+		int lanczos2_n_points_base = 2;
+		int lanczos2_n_points;
+
 
 		if (pscale > 1.0)
 			pscale = 1.0;
@@ -823,13 +823,14 @@ public class Equi2Rect {
 					(int) (lanczos2_weights_LU[j][k] * corr);
 			}
 		}
+		return lanczos2_n_points;
 	}
 
-	private static void lanczos2_compute_view_scale(int equiWidth, int rectWidth, double fov) {
+	private static double lanczos2_compute_view_scale(int equiWidth, int rectWidth, double fov) {
 		double wDT;
 
 		wDT = fov * equiWidth / 360.0;
-		view_scale = rectWidth / wDT;
+		return (rectWidth / wDT);
 	}
 // 
 // 	// interpolates one pixel
@@ -840,7 +841,12 @@ public class Equi2Rect {
 		int xs,
 		int ys,
 		int dx,
-		int dy) {
+		int dy,
+		int[] aR,
+		int[] aG,
+		int[] aB,
+		int lanczos2_n_points,
+		int[][] lanczos2_weights_LU) {
 		int tmpR, tmpG, tmpB;
 		int itl, jtl;
 		int ki, kj;
@@ -944,4 +950,12 @@ public class Equi2Rect {
 	/////////////////////////////////////////////
 	// end of Lanczos2 interpolation stuff
 	/////////////////////////////////////////////
+
+	public class LanczosVars {
+		public int[] lanczos2_LU = new int[UNIT_XSAMPLES * 2 + 1];
+		public int[][] lanczos2_weights_LU = new int[UNIT_XSAMPLES + 1][MAX_WEIGHTS];
+		public int[] aR = new int[MAX_WEIGHTS];
+		public int[] aG = new int[MAX_WEIGHTS];
+		public int[] aB = new int[MAX_WEIGHTS];
+	}
 }

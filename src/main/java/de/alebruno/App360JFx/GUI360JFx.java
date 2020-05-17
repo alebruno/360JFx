@@ -77,8 +77,6 @@ public class GUI360JFx extends Application {
         Rotate rx = new Rotate(180.0, Rotate.X_AXIS);
         camera.getTransforms().add(rx);
 
-
-        Equi2Rect.init();
         BufferedImage image = ImageIO.read(getClass().getResourceAsStream("/Schwarzenberg.jpg"));
         skyboxImages = EquirectangularToCubic.processImage(image);
         skyboxImagesFx = new Image[6];
