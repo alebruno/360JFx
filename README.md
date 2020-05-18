@@ -11,3 +11,8 @@ Features:
 * Multiplatform: it runs on Windows, Mac and Linux.
 * Self-contained: no additional libraries are needed, only JDK 11 is required.
 * Accurate rendering in proximity of zenit and nadir angles.
+
+How to build 360JFx:
+* Check the prerequisites: Maven and JDK 11 are installed.
+* Run the following command: ```mvn package```
+
