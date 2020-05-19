@@ -31,11 +31,15 @@ import javafx.scene.image.Image;
 import javafx.scene.input.*;
 import javafx.scene.paint.Color;
 import javafx.scene.transform.Rotate;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import org.fxyz3d.scene.Skybox;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Array;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import com.Equi2Rect.EquirectangularToCubic;
 
@@ -68,6 +72,7 @@ public class GUI360JFx extends Application {
     public void start(Stage primaryStage) throws Exception {
 
         stage = primaryStage;
+        atlas = new Group();
         camera = new PerspectiveCamera(true);
         camera.setNearClip(0.1);
         camera.setFarClip(10000.0);
@@ -78,29 +83,12 @@ public class GUI360JFx extends Application {
         camera.getTransforms().add(rx);
 
         BufferedImage image = ImageIO.read(getClass().getResourceAsStream("/Schwarzenberg.jpg"));
-        skyboxImages = EquirectangularToCubic.processImage(image);
-        skyboxImagesFx = new Image[6];
-
-        for (int i = 0; i < 6; i++)
-        {
-            skyboxImagesFx[i] = SwingFXUtils.toFXImage(skyboxImages[i], null);
-        }
-
-        sky = new Skybox(skyboxImagesFx[4],
-                skyboxImagesFx[5],
-                skyboxImagesFx[3],
-                skyboxImagesFx[1],
-                skyboxImagesFx[0],
-                skyboxImagesFx[2],
-                1000, camera);
-
-        atlas = new Group(sky);
+        openPanoramaImage(image);
         root3D = new Group(camera, new AmbientLight(Color.WHITE), atlas);
         scene = new Scene(root3D, 800, 600, true, SceneAntialiasing.BALANCED);
         scene.setCamera(camera);
         primaryStage.setTitle("360JFx");
         primaryStage.setScene(scene);
-
 
         Rotate rotx = new Rotate(0.0, Rotate.X_AXIS);
         Rotate roty = new Rotate(0.0, Rotate.Y_AXIS);
@@ -127,7 +115,10 @@ public class GUI360JFx extends Application {
             public void handle(MouseEvent mouseEvent) {
                 if(mouseEvent.getButton().equals(MouseButton.PRIMARY)){
                     if(mouseEvent.getClickCount() == 2){
-                        System.out.println("Double clicked");
+                        FileChooser fileChooser = new FileChooser();
+                        configureFileChooser(fileChooser);
+                        File file = fileChooser.showOpenDialog(stage);
+                        openPanoramaFile(file);
                     }
                 }
             }
@@ -154,32 +145,7 @@ public class GUI360JFx extends Application {
         scene.setOnDragDropped(new EventHandler<DragEvent>() {
             @Override
             public void handle(DragEvent event) {
-                List<File> files = event.getDragboard().getFiles();
-                System.out.println("Got " + files.size() + " files");
-
-                try {
-                    System.out.printf("Processing image file: %s\n", files.get(0));
-                    skyboxImages = EquirectangularToCubic.processImage(EquirectangularToCubic.loadImage(files.get(0)));
-                } catch (IOException e) {
-                    System.out.println(e);
-                }
-
-                skyboxImagesFx = new Image[6];
-
-                for (int i = 0; i < 6; i++)
-                {
-                    skyboxImagesFx[i] = SwingFXUtils.toFXImage(skyboxImages[i], null);
-                }
-
-                sky = new Skybox(skyboxImagesFx[4],
-                        skyboxImagesFx[5],
-                        skyboxImagesFx[3],
-                        skyboxImagesFx[1],
-                        skyboxImagesFx[0],
-                        skyboxImagesFx[2],
-                        1000, camera);
-                while (atlas.getChildren().size() > 0) atlas.getChildren().remove(0);
-                atlas.getChildren().add(sky);
+                openPanoramaFile(event.getDragboard().getFiles().get(0));
                 event.consume();
             }
         });
@@ -189,6 +155,49 @@ public class GUI360JFx extends Application {
 
     Double returnInsideRange(Double value, Double min, Double max) {
         return Math.min(Math.max(value, min), max);
+    }
+
+    public void openPanoramaFile(File file) {
+        try {
+            System.out.printf("Processing image file: %s\n", file);
+            BufferedImage image = EquirectangularToCubic.loadImage(file);
+            openPanoramaImage(image);
+        } catch (IOException e) {
+            System.out.println(e);
+        }
+    }
+
+    public void openPanoramaImage(BufferedImage image)
+    {
+        skyboxImages = EquirectangularToCubic.processImage(image);
+        skyboxImagesFx = new Image[6];
+
+        for (int i = 0; i < 6; i++)
+        {
+            skyboxImagesFx[i] = SwingFXUtils.toFXImage(skyboxImages[i], null);
+        }
+
+        sky = new Skybox(skyboxImagesFx[4],
+                skyboxImagesFx[5],
+                skyboxImagesFx[3],
+                skyboxImagesFx[1],
+                skyboxImagesFx[0],
+                skyboxImagesFx[2],
+                1000, camera);
+        while (atlas.getChildren().size() > 0) atlas.getChildren().remove(0);
+        atlas.getChildren().add(sky);
+    }
+
+    private static void configureFileChooser(
+            final FileChooser fileChooser) {
+        fileChooser.setTitle("Select Panorama");
+        fileChooser.setInitialDirectory(new File(System.getProperty("user.home"))
+        );
+        fileChooser.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("All Files", "*.*"),
+                new FileChooser.ExtensionFilter("JPG", new ArrayList<String>(Arrays.asList("*.jpg", "*.jpeg","*.JPG","*.JPEG","*.Jpg","*.Jpeg"))),
+                new FileChooser.ExtensionFilter("PNG", new ArrayList<String>(Arrays.asList("*.png", "*.PNG")))
+        );
     }
 
     public static void main(String[] args) {
