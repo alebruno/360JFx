@@ -112,14 +112,18 @@ public class GUI360JFx extends Application {
 
         scene.setOnMouseClicked(new EventHandler<MouseEvent>() {
             @Override
-            public void handle(MouseEvent mouseEvent) {
-                if(mouseEvent.getButton().equals(MouseButton.PRIMARY)){
+            public void handle(MouseEvent mouseEvent){
+                if(mouseEvent.getButton().equals(MouseButton.PRIMARY)) {
                     if(mouseEvent.getClickCount() == 2){
-                        FileChooser fileChooser = new FileChooser();
-                        configureFileChooser(fileChooser);
-                        File file = fileChooser.showOpenDialog(stage);
-                        openPanoramaFile(file);
+                        primaryStage.setFullScreen(true);
                     }
+                }
+
+                if(mouseEvent.getButton().equals(MouseButton.SECONDARY)) {
+                    FileChooser fileChooser = new FileChooser();
+                    configureFileChooser(fileChooser);
+                    File file = fileChooser.showOpenDialog(stage);
+                    openPanoramaFile(file);
                 }
             }
         });
