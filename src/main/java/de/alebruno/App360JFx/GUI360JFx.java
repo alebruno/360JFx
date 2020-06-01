@@ -19,14 +19,13 @@
 
 package de.alebruno.App360JFx;
 
-import com.Equi2Rect.Equi2Rect;
-
 import javafx.application.Application;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.event.EventHandler;
 import javafx.scene.*;
+import javafx.scene.control.Alert;
 import javafx.scene.image.Image;
 import javafx.scene.input.*;
 import javafx.scene.paint.Color;
@@ -37,10 +36,8 @@ import org.fxyz3d.scene.Skybox;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import com.Equi2Rect.EquirectangularToCubic;
 
 import javax.imageio.ImageIO;
@@ -173,7 +170,17 @@ public class GUI360JFx extends Application {
 
     public void openPanoramaImage(BufferedImage image)
     {
-        skyboxImages = EquirectangularToCubic.processImage(image);
+        try {
+            skyboxImages = EquirectangularToCubic.processImage(image);
+        } catch (IOException ioEx)
+        {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Wrong image size");
+            alert.setHeaderText(null);
+            alert.setContentText(ioEx.getMessage());
+            alert.showAndWait();
+            return;
+        }
         skyboxImagesFx = new Image[6];
 
         for (int i = 0; i < 6; i++)

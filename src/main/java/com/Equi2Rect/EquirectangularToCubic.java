@@ -45,15 +45,16 @@ public class EquirectangularToCubic {
      * Process a BufferedImage
      * @param equi The BufferedImage containing a cylindrical equidistant projection of a spherical panorama
      */
-    public static BufferedImage[] processImage(BufferedImage equi) {
+    public static BufferedImage[] processImage(BufferedImage equi) throws IOException {
 
         verboseMode = true;
         int equiWidth = equi.getWidth();
         int equiHeight = equi.getHeight();
 
         if (equiWidth != equiHeight * 2) {
-            System.out.println("Image is not equirectangular (" + equiWidth + " x " + equiHeight + ")");
-            return null;
+            String errorMessage = "Image is not equirectangular (" + equiWidth + " x " + equiHeight + ")";
+            System.out.println(errorMessage);
+            throw new IOException(errorMessage);
         }
 
         int equiData[][] = new int[equiHeight][equiWidth];
